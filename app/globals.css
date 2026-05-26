@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: linear-gradient(145deg, #f0edff 0%, #e9e4ff 30%, #ede9fe 60%, #e8e4ff 100%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer utilities {
+  /* Clay card — main elevated surface */
+  .clay {
+    box-shadow:
+      8px 8px 20px rgba(109, 40, 217, 0.13),
+      -5px -5px 14px rgba(255, 255, 255, 0.92),
+      inset 2px 2px 5px rgba(255, 255, 255, 0.75),
+      inset -2px -2px 4px rgba(109, 40, 217, 0.06);
+    border: none !important;
+  }
+
+  /* Clay for smaller chips / pills */
+  .clay-sm {
+    box-shadow:
+      4px 4px 10px rgba(109, 40, 217, 0.12),
+      -3px -3px 8px rgba(255, 255, 255, 0.9),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.65),
+      inset -1px -1px 3px rgba(109, 40, 217, 0.05);
+    border: none !important;
+  }
+
+  /* Clay for concave / inset areas (inputs, troughs) */
+  .clay-inset {
+    box-shadow:
+      inset 4px 4px 10px rgba(109, 40, 217, 0.1),
+      inset -3px -3px 8px rgba(255, 255, 255, 0.85);
+    border: none !important;
+  }
+
+  /* Clay primary button */
+  .clay-btn {
+    box-shadow:
+      5px 5px 14px rgba(109, 40, 217, 0.35),
+      -3px -3px 8px rgba(255, 255, 255, 0.5),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.35);
+  }
+  .clay-btn:active {
+    box-shadow:
+      2px 2px 6px rgba(109, 40, 217, 0.25),
+      inset 3px 3px 8px rgba(109, 40, 217, 0.2),
+      inset -1px -1px 4px rgba(255, 255, 255, 0.4);
+    transform: scale(0.98);
+  }
+
+  /* Soft red clay */
+  .clay-danger {
+    box-shadow:
+      5px 5px 14px rgba(244, 63, 94, 0.25),
+      -3px -3px 8px rgba(255, 255, 255, 0.6),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.4);
+  }
+}
