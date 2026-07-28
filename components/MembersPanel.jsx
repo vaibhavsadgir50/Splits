@@ -4,6 +4,7 @@ import { useState } from 'react'
 import FloatingCTA from './FloatingCTA'
 import { cartoonAvatarUrl } from '@/lib/avatars'
 import { useAvatars } from '@/contexts/AvatarContext'
+import { useAccount } from '@/contexts/AccountContext'
 
 const AVATAR_SHAPES = ['circle', 'diamond', 'oval']
 
@@ -21,7 +22,8 @@ function MemberAvatar({ name, shape }) {
   return <div className="w-16 h-16 rounded-full ring-2 ring-white flex-shrink-0" style={style} />
 }
 
-export default function MembersPanel({ members, onChanged, ledgerId }) {
+export default function MembersPanel() {
+  const { ledgerId, members, refreshMembers } = useAccount()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,7 +42,7 @@ export default function MembersPanel({ members, onChanged, ledgerId }) {
       if (!res.ok) throw new Error(data.error)
       setNewName('')
       setAdding(false)
-      await onChanged()
+      await refreshMembers()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -54,7 +56,7 @@ export default function MembersPanel({ members, onChanged, ledgerId }) {
     setTimeout(async () => {
       try {
         await fetch(`/api/members/${encodeURIComponent(name)}?ledger_id=${encodeURIComponent(ledgerId)}`, { method: 'DELETE' })
-        await onChanged()
+        await refreshMembers()
       } catch {
         setError('Failed to remove member')
       } finally {

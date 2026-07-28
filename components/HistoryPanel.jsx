@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAccount } from '@/contexts/AccountContext'
 
-export default function HistoryPanel({ ledgerId }) {
+export default function HistoryPanel() {
+  const { ledgerId } = useAccount()
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

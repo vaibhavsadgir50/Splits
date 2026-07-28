@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Avatar from './Avatar'
+import { useAccount } from '@/contexts/AccountContext'
 
-export default function BalancesView({ ledgerId, ledgerName: ledgerNameProp, onLedgerRenamed, members, refreshKey }) {
+export default function BalancesView() {
+  const { ledgerId, ledgerName, setLedgerName, members } = useAccount()
   const [data, setData] = useState({ settlements: [], netBalances: {} })
   const [loading, setLoading] = useState(true)
   const [settling, setSettling] = useState(null)
@@ -15,13 +17,10 @@ export default function BalancesView({ ledgerId, ledgerName: ledgerNameProp, onL
   const [memberItems, setMemberItems] = useState([])
   const [memberItemsLoading, setMemberItemsLoading] = useState(false)
 
-  const [ledgerName, setLedgerName] = useState(ledgerNameProp)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [nameSaving, setNameSaving] = useState(false)
   const [nameError, setNameError] = useState('')
-
-  useEffect(() => { setLedgerName(ledgerNameProp) }, [ledgerNameProp])
 
   const fetchBalances = useCallback(() => {
     setLoading(true)
@@ -32,7 +31,7 @@ export default function BalancesView({ ledgerId, ledgerName: ledgerNameProp, onL
       .finally(() => setLoading(false))
   }, [ledgerId])
 
-  useEffect(() => { fetchBalances() }, [fetchBalances, refreshKey])
+  useEffect(() => { fetchBalances() }, [fetchBalances])
 
   async function handleSaveName() {
     const trimmed = nameInput.trim()
@@ -48,7 +47,6 @@ export default function BalancesView({ ledgerId, ledgerName: ledgerNameProp, onL
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setLedgerName(json.ledger_name)
-      onLedgerRenamed?.(json.ledger_name)
     } catch (err) {
       setNameError(err.message || 'Failed to save name')
       setTimeout(() => setNameError(''), 4000)

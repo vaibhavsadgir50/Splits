@@ -3,9 +3,14 @@
 import { useState, useEffect } from 'react'
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
+const IS_DEV = process.env.NODE_ENV !== 'production'
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [devPeople, setDevPeople] = useState([])
+  const [devEmail, setDevEmail] = useState('')
+  const [devLoading, setDevLoading] = useState(false)
 
   useEffect(() => {
     // Already logged in? redirect away
@@ -13,6 +18,32 @@ export default function LoginPage() {
       if (session) window.location.href = '/'
     })
   }, [])
+
+  useEffect(() => {
+    if (!IS_DEV) return
+    fetch('/api/dev-login')
+      .then((r) => r.json())
+      .then((d) => setDevPeople(d.people ?? []))
+      .catch(() => {})
+  }, [])
+
+  async function signInAsDev(email) {
+    if (!email.trim()) return
+    setDevLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      window.location.href = '/'
+    } catch (err) {
+      setError(err.message || 'Dev sign-in failed')
+      setDevLoading(false)
+    }
+  }
 
   async function signInWithGoogle() {
     setLoading(true)
@@ -77,6 +108,50 @@ export default function LoginPage() {
         <p className="text-center font-mono text-[9px] uppercase tracking-[0.2em] text-on-surface/55">
           Sign in to view and manage your household expenses
         </p>
+
+        {/* Dev-only bypass — impersonates a real member's email without a
+            Google OAuth round-trip. Never rendered in production. */}
+        {IS_DEV && (
+          <div className="glass-shard rounded-3xl p-6 space-y-4 border border-dashed border-amber-500/40">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px] text-amber-600">construction</span>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-amber-600">Dev sign-in (not in production)</p>
+            </div>
+
+            {devPeople.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {devPeople.map((p) => (
+                  <button
+                    key={p.email}
+                    onClick={() => signInAsDev(p.email)}
+                    disabled={devLoading}
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-full glass-shard text-left hover:scale-[1.01] disabled:opacity-50 transition"
+                  >
+                    <span className="text-sm font-semibold text-on-surface">{p.name}</span>
+                    <span className="font-mono text-[9px] text-on-surface/55">{p.ledgerName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                placeholder="any-email@example.com"
+                className="flex-1 glass-shard rounded-full px-4 py-2.5 text-sm focus:outline-none placeholder:text-on-surface/45"
+              />
+              <button
+                onClick={() => signInAsDev(devEmail)}
+                disabled={devLoading || !devEmail.trim()}
+                className="px-4 py-2.5 rounded-full bg-amber-600 text-white font-mono text-[10px] uppercase tracking-widest disabled:opacity-40 transition"
+              >
+                Go
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
