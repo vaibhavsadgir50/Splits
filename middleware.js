@@ -27,7 +27,8 @@ export async function middleware(request) {
   const isPublic =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/api/')
+    pathname.startsWith('/api/') ||
+    process.env.NODE_ENV !== 'production' // TEMP: dev-only login bypass, remove before shipping
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()

@@ -1,65 +1,84 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: linear-gradient(145deg, #f0edff 0%, #e9e4ff 30%, #ede9fe 60%, #e8e4ff 100%);
-  min-height: 100vh;
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
 
+@layer base {
+  html, body {
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  body {
+    background-color: #ffffff;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+}
+
+/* Spectral light-leaks background — a diagonal prismatic streak, fixed-size so it reads
+   the same regardless of viewport width instead of stretching to the full window */
+.prism-bg {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(225deg, transparent 40%, rgba(255, 100, 255, 0.07) 50%, transparent 60%),
+    linear-gradient(135deg, transparent 30%, rgba(100, 200, 255, 0.12) 45%, rgba(255, 255, 100, 0.08) 55%, transparent 70%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0) 40%, rgba(147, 197, 253, 0.45) 50%, rgba(255, 255, 255, 0) 60%);
+  background-size: 1400px 1400px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
 @layer utilities {
-  /* Clay card — main elevated surface */
-  .clay {
-    box-shadow:
-      8px 8px 20px rgba(109, 40, 217, 0.13),
-      -5px -5px 14px rgba(255, 255, 255, 0.92),
-      inset 2px 2px 5px rgba(255, 255, 255, 0.75),
-      inset -2px -2px 4px rgba(109, 40, 217, 0.06);
-    border: none !important;
+  /* Glass shard — plain frosted glass, no per-card decoration */
+  .glass-shard {
+    background: rgba(120, 122, 130, 0.14);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    position: relative;
   }
 
-  /* Clay for smaller chips / pills */
-  .clay-sm {
-    box-shadow:
-      4px 4px 10px rgba(109, 40, 217, 0.12),
-      -3px -3px 8px rgba(255, 255, 255, 0.9),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.65),
-      inset -1px -1px 3px rgba(109, 40, 217, 0.05);
-    border: none !important;
+  /* Broken grid — alternating offset/rotation on list items */
+  .broken-grid-item:nth-child(even) {
+    transform: translateX(1.5rem) rotate(-0.5deg);
+  }
+  .broken-grid-item:nth-child(odd) {
+    transform: translateX(-1rem) rotate(0.5deg);
   }
 
-  /* Clay for concave / inset areas (inputs, troughs) */
-  .clay-inset {
-    box-shadow:
-      inset 4px 4px 10px rgba(109, 40, 217, 0.1),
-      inset -3px -3px 8px rgba(255, 255, 255, 0.85);
-    border: none !important;
+  .shimmer-text {
+    background: linear-gradient(90deg, #1a1a1a, #555, #1a1a1a);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 8s linear infinite;
   }
 
-  /* Clay primary button */
-  .clay-btn {
-    box-shadow:
-      5px 5px 14px rgba(109, 40, 217, 0.35),
-      -3px -3px 8px rgba(255, 255, 255, 0.5),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.35);
-  }
-  .clay-btn:active {
-    box-shadow:
-      2px 2px 6px rgba(109, 40, 217, 0.25),
-      inset 3px 3px 8px rgba(109, 40, 217, 0.2),
-      inset -1px -1px 4px rgba(255, 255, 255, 0.4);
-    transform: scale(0.98);
+  @keyframes shimmer {
+    to { background-position: 200% center; }
   }
 
-  /* Soft red clay */
-  .clay-danger {
-    box-shadow:
-      5px 5px 14px rgba(244, 63, 94, 0.25),
-      -3px -3px 8px rgba(255, 255, 255, 0.6),
-      inset 1px 1px 3px rgba(255, 255, 255, 0.4);
-  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 }

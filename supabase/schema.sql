@@ -8,6 +8,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS members (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT UNIQUE NOT NULL,
+  email       TEXT,
+  avatar_url  TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS items (
   price          NUMERIC(10, 2) NOT NULL,
   split_with     TEXT[]         NOT NULL DEFAULT '{}',
   per_person_amt NUMERIC(10, 2),
+  category       TEXT,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -87,6 +90,29 @@ CREATE TABLE IF NOT EXISTS settlements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 9. Item image cache (Open Food Facts / DuckDuckGo lookups, keyed by
+--    normalized item name, so a repeat item never gets re-searched)
+CREATE TABLE IF NOT EXISTS item_images (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_key   TEXT UNIQUE NOT NULL,
+  image_url  TEXT,
+  source     TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Household settings (single row — this app supports one household)
+CREATE TABLE IF NOT EXISTS household_settings (
+  id           INT PRIMARY KEY DEFAULT 1,
+  account_name TEXT DEFAULT 'Our Household',
+  updated_at   TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT household_settings_single_row CHECK (id = 1)
+);
+INSERT INTO household_settings (id, account_name) VALUES (1, 'Our Household') ON CONFLICT (id) DO NOTHING;
+
 -- ── Migrations: run these if you already ran the old schema ────────────────
 -- ALTER TABLE receipts RENAME COLUMN uploaded_by TO paid_by;
 -- (settlements table is new — just re-run the CREATE TABLE above)
+-- ALTER TABLE members ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+-- (item_images table is new — just re-run the CREATE TABLE above)
+-- ALTER TABLE items ADD COLUMN IF NOT EXISTS category TEXT;
+-- (household_settings table is new — just re-run the CREATE TABLE + INSERT above)

@@ -1,6 +1,39 @@
 'use client'
 
 import { useState } from 'react'
+import AvatarStack from './AvatarStack'
+import Avatar from './Avatar'
+import ItemSplitModal from './ItemSplitModal'
+import { categoryIcon, categoryColor } from '@/lib/itemCategories'
+
+function ItemThumbnail({ item, onView }) {
+  const [errored, setErrored] = useState(false)
+  const color = categoryColor(item.category)
+  const hasImage = item.image_url && !errored
+
+  return (
+    <button
+      type="button"
+      onClick={hasImage ? onView : undefined}
+      className={`w-20 h-16 rounded-2xl overflow-hidden flex-shrink-0 ring-1 ring-on-surface/10 bg-white flex items-center justify-center ${hasImage ? 'active:scale-95 transition' : 'cursor-default'}`}
+    >
+      {hasImage ? (
+        <img
+          src={item.image_url}
+          alt={item.name}
+          className="w-full h-full object-cover"
+          onError={() => setErrored(true)}
+        />
+      ) : (
+        <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${color}22` }}>
+          <span className="material-symbols-outlined text-[18px]" style={{ color }}>
+            {categoryIcon(item.category)}
+          </span>
+        </span>
+      )}
+    </button>
+  )
+}
 
 export default function ReviewStep({
   members, paidBy, receiptId, storeName,
@@ -11,31 +44,9 @@ export default function ReviewStep({
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  function toggleAssignment(itemIdx, memberName) {
-    const next = { ...assignments }
-    const set = new Set(next[itemIdx] ?? [])
-    set.has(memberName) ? set.delete(memberName) : set.add(memberName)
-    next[itemIdx] = set
-    onAssignmentsChange(next)
-  }
-
-  function toggleAllForMember(memberName) {
-    const allChecked = items.every((_, i) => (assignments[i] ?? new Set()).has(memberName))
-    const next = { ...assignments }
-    items.forEach((_, i) => {
-      const set = new Set(next[i] ?? [])
-      allChecked ? set.delete(memberName) : set.add(memberName)
-      next[i] = set
-    })
-    onAssignmentsChange(next)
-  }
-
-  function toggleAllForItem(itemIdx) {
-    const allChecked = members.every((m) => (assignments[itemIdx] ?? new Set()).has(m))
-    const next = { ...assignments, [itemIdx]: allChecked ? new Set() : new Set(members) }
-    onAssignmentsChange(next)
-  }
+  const [splitModalIdx, setSplitModalIdx] = useState(null)
+  const [swapFromIdx, setSwapFromIdx] = useState(null)
+  const [lightboxItem, setLightboxItem] = useState(null)
 
   function updateItem(idx, field, value) {
     const next = [...items]
@@ -57,6 +68,42 @@ export default function ReviewStep({
     onAssignmentsChange(nextA)
   }
 
+  function setItemSplit(idx, names) {
+    onAssignmentsChange({ ...assignments, [idx]: new Set(names) })
+  }
+
+  function handleSwapTap(idx) {
+    if (swapFromIdx === null) {
+      setSwapFromIdx(idx)
+      return
+    }
+    if (swapFromIdx === idx) {
+      setSwapFromIdx(null)
+      return
+    }
+    const next = [...items]
+    const priceA = next[swapFromIdx].price
+    next[swapFromIdx] = { ...next[swapFromIdx], price: next[idx].price, confidence: 'high' }
+    next[idx] = { ...next[idx], price: priceA, confidence: 'high' }
+    onItemsChange(next)
+    setSwapFromIdx(null)
+  }
+
+  function isMemberInBill(name) {
+    return items.some((_, idx) => (assignments[idx] ?? new Set()).has(name))
+  }
+
+  function toggleMemberAcrossBill(name) {
+    const inBill = isMemberInBill(name)
+    const next = {}
+    items.forEach((_, idx) => {
+      const set = new Set(assignments[idx] ?? new Set())
+      inBill ? set.delete(name) : set.add(name)
+      next[idx] = set
+    })
+    onAssignmentsChange(next)
+  }
+
   const totals = Object.fromEntries(members.map((m) => [m, 0]))
   items.forEach((item, idx) => {
     const split = [...(assignments[idx] ?? new Set())]
@@ -76,12 +123,13 @@ export default function ReviewStep({
         .map((item, idx) => ({
           name: item.name,
           price: item.price,
+          category: item.category || null,
           split_with: [...(assignments[idx] ?? new Set())],
         }))
         .filter((i) => i.name && i.split_with.length > 0),
     }
     if (!payload.items.length) {
-      setError('No items assigned. Tick at least one person per item.')
+      setError('No items assigned. Tap each item and pick at least one person.')
       return
     }
     setLoading(true)
@@ -102,170 +150,237 @@ export default function ReviewStep({
     }
   }
 
+  const memberTotals = members.filter((m) => totals[m] > 0.005)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-black text-gray-900">
+          <h1 className="font-display-lg text-3xl text-on-surface">
             {storeName || 'Review & Split'}
-          </h2>
-          <p className="text-gray-400 text-sm mt-1">
-            {storeName && <span className="mr-1">Receipt & split ·</span>}
-            <span className="font-mono font-semibold text-brand-600">{receiptId}</span>
-            {' · '}paid by <strong>{paidBy}</strong>
+          </h1>
+          <p className="font-mono text-[10px] text-on-surface/65 mt-2 uppercase tracking-widest">
+            {receiptId} · paid by {paidBy}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={onDiscard}
-            className="text-sm text-rose-500 hover:text-rose-700 px-3 py-2 rounded-2xl clay-sm bg-rose-50 font-semibold transition"
+            className="glass-shard rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-red-500 hover:bg-red-50 transition"
           >
             Discard
           </button>
           <button
             onClick={onBack}
-            className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-2xl clay-sm bg-gray-100 font-semibold transition"
+            className="glass-shard rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-on-surface/80 hover:text-on-surface transition"
           >
             ← Back
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="clay bg-white/90 rounded-3xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-brand-100">
-              <th className="text-left px-5 py-4 font-bold text-gray-700 min-w-44">Item</th>
-              <th className="text-right px-3 py-4 font-bold text-gray-700 w-24">Price</th>
-              <th className="text-center px-2 py-4 font-bold text-gray-400 w-10 text-xs">All</th>
-              {members.map((m) => (
-                <th key={m} className="text-center px-3 py-4 min-w-[5rem]">
+      {/* Bulk remove/add a member across the whole bill */}
+      <div className="glass-shard rounded-full pl-4 pr-3 py-2.5 flex items-center gap-3">
+        <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface/55 flex-shrink-0">Splitting with</span>
+        <div className="flex items-center gap-2 overflow-x-auto">
+          {members.map((m) => {
+            const inBill = isMemberInBill(m)
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggleMemberAcrossBill(m)}
+                title={inBill ? `Remove ${m} from the entire bill` : `Add ${m} back to the entire bill`}
+                className="flex-shrink-0"
+              >
+                <Avatar name={m} size="xs" className={inBill ? '' : 'opacity-30 grayscale'} />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Items */}
+      {swapFromIdx !== null && (
+        <div className="flex items-center justify-between glass-shard rounded-full px-4 py-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/75">
+            Tap another item's price to swap
+          </span>
+          <button
+            onClick={() => setSwapFromIdx(null)}
+            className="font-mono text-[10px] uppercase tracking-widest text-primary"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      <div className="glass-shard rounded-3xl overflow-hidden divide-y divide-on-surface/10">
+        <div className="flex items-center justify-between px-5 py-3">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/55">Item</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/55">Price</span>
+        </div>
+
+        {items.map((item, idx) => {
+          const split = [...(assignments[idx] ?? new Set())]
+          const perPerson = split.length > 1 ? item.price / split.length : null
+          const uncertain = item.confidence === 'low'
+          const isSwapSource = swapFromIdx === idx
+          return (
+            <div key={idx} className={`px-5 py-4 flex gap-4 transition-colors ${isSwapSource ? 'bg-primary/10' : ''}`}>
+              <ItemThumbnail item={item} onView={() => setLightboxItem(item)} />
+
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  {uncertain && (
+                    <span
+                      className="material-symbols-outlined text-amber-500 text-[16px] flex-shrink-0"
+                      title="AI wasn't fully sure about this item — please verify"
+                    >
+                      warning
+                    </span>
+                  )}
+                  <input
+                    type="text"
+                    value={item.name}
+                    onChange={(e) => updateItem(idx, 'name', e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent border-b-2 border-transparent focus:border-primary focus:outline-none py-0.5 font-medium placeholder:text-on-surface/45"
+                    placeholder="Item name"
+                  />
                   <button
-                    onClick={() => toggleAllForMember(m)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition clay-sm ${
-                      items.every((_, i) => (assignments[i] ?? new Set()).has(m))
-                        ? 'bg-brand-600 text-white'
-                        : 'bg-brand-50 text-brand-600 hover:bg-brand-100'
+                    onClick={() => handleSwapTap(idx)}
+                    title="Swap price with another item"
+                    className={`w-6 h-6 flex items-center justify-center rounded-full transition flex-shrink-0 ${
+                      isSwapSource ? 'bg-primary text-white' : 'text-on-surface/35 hover:text-primary'
                     }`}
                   >
-                    {m}
+                    <span className="material-symbols-outlined text-[15px]">swap_vert</span>
                   </button>
-                </th>
-              ))}
-              <th className="w-8 px-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {items.map((item, idx) => {
-              const split = [...(assignments[idx] ?? new Set())]
-              const perPerson = split.length > 1 ? item.price / split.length : null
-              return (
-                <tr key={idx} className="hover:bg-brand-50/30 transition">
-                  <td className="px-5 py-3">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => updateItem(idx, 'name', e.target.value)}
-                      className="w-full bg-transparent border-b-2 border-transparent focus:border-brand-400 focus:outline-none py-0.5 font-medium"
-                      placeholder="Item name"
-                    />
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex items-center justify-end gap-0.5">
-                      <span className="text-gray-400 text-xs font-semibold">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item.price}
-                        onChange={(e) => updateItem(idx, 'price', e.target.value)}
-                        className="w-16 text-right bg-transparent border-b-2 border-transparent focus:border-brand-400 focus:outline-none py-0.5 font-semibold"
-                      />
-                    </div>
-                    {perPerson && (
-                      <p className="text-right text-xs text-gray-400 mt-0.5">${perPerson.toFixed(2)} ea.</p>
-                    )}
-                  </td>
-                  <td className="text-center px-2 py-3">
-                    <input
-                      type="checkbox"
-                      checked={members.length > 0 && members.every((m) => (assignments[idx] ?? new Set()).has(m))}
-                      onChange={() => toggleAllForItem(idx)}
-                      className="w-4 h-4 accent-brand-600 cursor-pointer"
-                    />
-                  </td>
-                  {members.map((m) => (
-                    <td key={m} className="text-center px-3 py-3">
-                      <input
-                        type="checkbox"
-                        checked={(assignments[idx] ?? new Set()).has(m)}
-                        onChange={() => toggleAssignment(idx, m)}
-                        className="w-4 h-4 accent-brand-600 cursor-pointer"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-2 py-3">
-                    <button
-                      onClick={() => removeItem(idx)}
-                      className="text-gray-300 hover:text-rose-500 transition text-lg leading-none"
-                    >
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-brand-100 bg-brand-50/40">
-              <td className="px-5 py-3">
-                <button onClick={addItem} className="text-brand-600 hover:text-brand-700 text-xs font-bold">
-                  + Add item
+                  <button
+                    onClick={() => removeItem(idx)}
+                    className="text-on-surface/40 hover:text-red-500 transition text-lg leading-none flex-shrink-0"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-0.5 self-start">
+                  <span className="text-on-surface/45 text-xs font-mono">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={item.price}
+                    onChange={(e) => updateItem(idx, 'price', e.target.value)}
+                    className="w-16 bg-transparent border-b-2 border-transparent focus:border-primary focus:outline-none py-0.5 font-mono font-semibold"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setSplitModalIdx(idx)}
+                  className="flex items-center gap-3 self-end"
+                >
+                  {split.length > 0 ? (
+                    <>
+                      <span className="font-mono text-[9px] text-on-surface/65 text-right">
+                        {split.length === 1 ? split[0] : `${split.length} people`}
+                        {perPerson && ` · $${perPerson.toFixed(2)} ea.`}
+                      </span>
+                      <AvatarStack names={split} size="xs" max={5} />
+                    </>
+                  ) : (
+                    <span className="font-mono text-[9px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-dashed border-on-surface/30 text-on-surface/65">
+                      + Add people
+                    </span>
+                  )}
                 </button>
-              </td>
-              <td className="px-3 py-3 text-right font-black text-gray-900">
-                ${items.reduce((s, i) => s + (i.price || 0), 0).toFixed(2)}
-              </td>
-              <td />
-              {members.map((m) => (
-                <td key={m} className="text-center px-3 py-3">
-                  <span className="text-xs font-black text-brand-700">${totals[m].toFixed(2)}</span>
-                </td>
-              ))}
-              <td />
-            </tr>
-          </tfoot>
-        </table>
+              </div>
+            </div>
+          )
+        })}
+
+        <div className="flex items-center justify-between px-5 py-3">
+          <button onClick={addItem} className="font-mono text-[10px] uppercase tracking-widest text-primary hover:opacity-70">
+            + Add item
+          </button>
+          <span className="font-mono font-black text-on-surface">
+            ${items.reduce((s, i) => s + (i.price || 0), 0).toFixed(2)}
+          </span>
+        </div>
       </div>
+
+      {/* Split summary */}
+      {memberTotals.length > 0 && (
+        <div className="glass-shard rounded-3xl px-5 py-4 flex flex-col gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/55">Split summary</p>
+          <div className="flex flex-col gap-3">
+            {memberTotals.map((m) => (
+              <div key={m} className="flex items-center gap-3">
+                <Avatar name={m} size="xs" />
+                <span className="flex-1 text-sm font-semibold text-on-surface">{m}</span>
+                <span className="font-mono text-sm font-bold text-primary">${totals[m].toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {splitModalIdx !== null && (
+        <ItemSplitModal
+          itemName={items[splitModalIdx]?.name}
+          members={members}
+          selected={[...(assignments[splitModalIdx] ?? new Set())]}
+          onConfirm={(names) => { setItemSplit(splitModalIdx, names); setSplitModalIdx(null) }}
+          onClose={() => setSplitModalIdx(null)}
+        />
+      )}
+
+      {/* Full-size item image lightbox */}
+      {lightboxItem && (
+        <div
+          className="fixed inset-0 bg-on-surface/40 backdrop-blur-sm flex items-center justify-center z-[70] p-6"
+          onClick={() => setLightboxItem(null)}
+        >
+          <div className="glass-shard rounded-3xl p-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full aspect-square rounded-2xl bg-white overflow-hidden flex items-center justify-center">
+              <img src={lightboxItem.image_url} alt={lightboxItem.name} className="w-full h-full object-contain" />
+            </div>
+            <p className="mt-4 text-center font-display-lg text-lg text-on-surface">{lightboxItem.name}</p>
+            <button
+              onClick={() => setLightboxItem(null)}
+              className="mt-4 w-full py-3 rounded-full bg-on-surface text-white font-mono text-[11px] uppercase tracking-widest transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div>
-        <label className="text-sm font-bold text-gray-700">Notes (optional)</label>
+        <label className="font-mono text-[10px] uppercase tracking-widest text-on-surface/55">Notes (optional)</label>
         <input
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="e.g. Weekly shop at Trader Joe's"
-          className="mt-2 w-full clay-inset bg-white/80 rounded-2xl px-4 py-3 text-sm focus:outline-none"
+          className="mt-2 w-full glass-shard rounded-3xl px-4 py-3 text-sm focus:outline-none placeholder:text-on-surface/45"
         />
       </div>
 
       {error && (
-        <div className="clay-inset bg-red-50 rounded-2xl px-4 py-3">
-          <p className="text-red-500 text-sm font-medium">{error}</p>
-        </div>
+        <p className="font-mono text-xs text-red-500">{error}</p>
       )}
 
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-3xl font-black text-base clay-btn disabled:opacity-50 transition flex items-center justify-center gap-2"
+        className="w-full bg-on-surface text-white py-4 rounded-full font-mono text-sm uppercase tracking-widest disabled:opacity-50 transition flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
-            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>

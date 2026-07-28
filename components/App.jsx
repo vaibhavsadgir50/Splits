@@ -9,6 +9,9 @@ import ReviewStep from './ReviewStep'
 import SummaryStep from './SummaryStep'
 import HistoryPanel from './HistoryPanel'
 import JoinModal from './JoinModal'
+import Avatar from './Avatar'
+import ProfileModal from './ProfileModal'
+import { AvatarProvider } from '@/contexts/AvatarContext'
 
 export default function App() {
   const [members, setMembers] = useState([])
@@ -16,6 +19,7 @@ export default function App() {
   const [view, setView] = useState('home')
   const [step, setStep] = useState(null)
   const [balanceRefreshKey, setBalanceRefreshKey] = useState(0)
+  const [showProfile, setShowProfile] = useState(false)
 
   // Auth
   const [authUser, setAuthUser] = useState(null)
@@ -68,7 +72,13 @@ export default function App() {
   function handleParsed({ items: parsed, receipt_id, store_name }) {
     setReceiptId(receipt_id)
     setStoreName(store_name || '')
-    setItems(parsed.map((i) => ({ name: i.name, price: i.price ?? 0 })))
+    setItems(parsed.map((i) => ({
+      name: i.name,
+      price: i.price ?? 0,
+      confidence: i.confidence ?? 'high',
+      category: i.category ?? 'other',
+      image_url: i.image_url ?? null,
+    })))
     const init = {}
     parsed.forEach((_, idx) => { init[idx] = new Set(members) })
     setAssignments(init)
@@ -90,10 +100,10 @@ export default function App() {
     setStoreName('')
   }
 
-  function handleManual() {
+  function handleManual({ storeName: manualStore = '', total: manualTotal = 0 } = {}) {
     setReceiptId(`MAN-${Date.now()}`)
-    setStoreName('')
-    setItems([{ name: '', price: 0 }])
+    setStoreName(manualStore)
+    setItems([{ name: '', price: Number(manualTotal) || 0 }])
     setAssignments({ 0: new Set(members) })
     setStep('review')
   }
@@ -105,67 +115,39 @@ export default function App() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-brand-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-on-surface/15 border-t-on-surface rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <AvatarProvider>
+    <div className="min-h-screen flex flex-col relative">
       {/* Header */}
-      <header className="sticky top-0 z-10 backdrop-blur-md bg-white/60">
-        <div className="max-w-lg mx-auto px-5 py-4 flex items-center justify-between">
+      <header className="fixed top-0 inset-x-0 z-50 pt-safe px-6 mt-4">
+        <div className="h-14 px-6 flex items-center justify-between glass-shard rounded-full max-w-lg mx-auto">
           <button
             onClick={() => { setView('home'); setStep(null) }}
-            className="flex items-center gap-3 hover:opacity-80 transition"
+            className="text-xl font-display-lg font-bold tracking-tight text-on-surface hover:opacity-70 transition"
           >
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 clay-sm flex items-center justify-center">
-              <span className="text-white font-black text-xs tracking-tight">SP</span>
-            </div>
-            <span className="text-xl font-black tracking-widest bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">
-              SPLITS
-            </span>
+            Splits
           </button>
 
-          <div className="flex gap-2 items-center">
+          {authUser && (
             <button
-              onClick={() => { setView(view === 'history' ? 'home' : 'history'); setStep(null) }}
-              className={`text-sm px-4 py-2 rounded-2xl font-semibold transition ${
-                view === 'history'
-                  ? 'bg-gray-800 text-white clay-sm'
-                  : 'bg-white/70 text-gray-600 hover:bg-white clay-sm'
-              }`}
+              onClick={() => setShowProfile(true)}
+              title="Edit profile"
+              className="hover:opacity-80 transition"
             >
-              History
+              <Avatar name={memberName || authUser.name || authUser.email} size="xs" />
             </button>
-            <button
-              onClick={() => { setView(view === 'members' ? 'home' : 'members'); setStep(null) }}
-              className={`text-sm px-4 py-2 rounded-2xl font-semibold transition ${
-                view === 'members'
-                  ? 'bg-brand-600 text-white clay-btn'
-                  : 'bg-brand-100 text-brand-700 hover:bg-brand-200 clay-sm'
-              }`}
-            >
-              Members ({members.length})
-            </button>
-
-            {/* User avatar + sign-out */}
-            {authUser && (
-              <button
-                onClick={handleSignOut}
-                title={`Signed in as ${authUser.email}\nClick to sign out`}
-                className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 clay-sm flex items-center justify-center text-white font-black text-xs"
-              >
-                {(memberName || authUser.name || authUser.email)?.[0]?.toUpperCase() ?? '?'}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
       {/* ReviewStep — full page */}
       {showReview && (
-        <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
+        <main className="flex-1 max-w-4xl w-full mx-auto px-6 pt-32 pb-16">
           <ReviewStep
             members={members}
             paidBy={paidBy}
@@ -183,44 +165,39 @@ export default function App() {
       )}
 
       {showSummary && (
-        <main className="flex-1 max-w-lg w-full mx-auto px-4 py-8">
+        <main className="flex-1 max-w-lg w-full mx-auto px-6 pt-32 pb-16">
           <SummaryStep summary={summary} receiptId={receiptId} onReset={handleReset} />
         </main>
       )}
 
       {!showReview && !showSummary && (
-        <main className="flex-1 max-w-lg w-full mx-auto px-4 py-8">
+        <>
           {view === 'members' ? (
-            <MembersPanel members={members} onChanged={loadMembers} onClose={() => setView('home')} />
+            <MembersPanel members={members} onChanged={loadMembers} />
           ) : view === 'history' ? (
-            <HistoryPanel onClose={() => setView('home')} />
+            <HistoryPanel />
           ) : (
             <BalancesView
               members={members}
-              onUpload={() => setStep('upload')}
               refreshKey={balanceRefreshKey}
+              memberName={memberName || authUser?.name || authUser?.email}
             />
           )}
-        </main>
+        </>
       )}
 
-      {/* Upload modal */}
+      {/* Upload — full-screen glass takeover */}
       {showUploadModal && (
-        <div
-          className="fixed inset-0 bg-brand-900/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setStep(null) }}
-        >
-          <div className="bg-white/90 rounded-4xl w-full max-w-sm clay">
-            <UploadStep
-              members={members}
-              membersLoading={membersLoading}
-              paidBy={paidBy}
-              onPaidByChange={setPaidBy}
-              onParsed={handleParsed}
-              onManual={handleManual}
-              onClose={() => setStep(null)}
-            />
-          </div>
+        <div className="fixed inset-0 z-50 prism-bg overflow-y-auto">
+          <UploadStep
+            members={members}
+            membersLoading={membersLoading}
+            paidBy={paidBy}
+            onPaidByChange={setPaidBy}
+            onParsed={handleParsed}
+            onManual={handleManual}
+            onClose={() => setStep(null)}
+          />
         </div>
       )}
 
@@ -236,6 +213,59 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Profile modal — avatar upload/removal + sign out */}
+      {showProfile && (
+        <ProfileModal
+          memberName={memberName || authUser?.name || authUser?.email}
+          onClose={() => setShowProfile(false)}
+          onSignOut={handleSignOut}
+        />
+      )}
+
+      {/* Fade scrolling content out before it reaches the floating nav/CTA */}
+      {!showReview && !showSummary && !showUploadModal && (
+        <div
+          className="fixed bottom-0 inset-x-0 h-48 z-30 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.97) 45%, rgba(255,255,255,0) 100%)' }}
+        />
+      )}
+
+      {/* Bottom navigation */}
+      {!showReview && !showSummary && !showUploadModal && (
+        <nav className="fixed bottom-8 inset-x-0 z-50 flex justify-center px-6">
+          <div className="glass-shard flex items-center justify-between h-16 px-3 rounded-full w-full max-w-lg mx-auto">
+            <button
+              onClick={() => { setView('history'); setStep(null) }}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-10 rounded-full transition-all ${
+                view === 'history' ? 'text-on-surface' : 'text-on-surface/55 hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">history</span>
+              <span className="font-mono text-[7px] uppercase tracking-[0.15em]">History</span>
+            </button>
+
+            <button
+              onClick={() => setStep('upload')}
+              className="flex-shrink-0 w-16 h-16 -mt-8 rounded-full bg-on-surface text-white shadow-xl shadow-on-surface/30 flex flex-col items-center justify-center gap-0.5 ring-4 ring-white/70 active:scale-95 transition-transform"
+            >
+              <span className="material-symbols-outlined text-[26px]">qr_code_scanner</span>
+              <span className="font-mono text-[6px] uppercase tracking-[0.15em]">Scan</span>
+            </button>
+
+            <button
+              onClick={() => { setView('members'); setStep(null) }}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-10 rounded-full transition-all ${
+                view === 'members' ? 'text-on-surface' : 'text-on-surface/55 hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">group</span>
+              <span className="font-mono text-[7px] uppercase tracking-[0.15em]">Members</span>
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
+    </AvatarProvider>
   )
 }

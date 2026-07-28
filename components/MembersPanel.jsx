@@ -1,11 +1,32 @@
 'use client'
 
 import { useState } from 'react'
+import FloatingCTA from './FloatingCTA'
+import { cartoonAvatarUrl } from '@/lib/avatars'
+import { useAvatars } from '@/contexts/AvatarContext'
 
-export default function MembersPanel({ members, onChanged, onClose }) {
+const AVATAR_SHAPES = ['circle', 'diamond', 'oval']
+
+function MemberAvatar({ name, shape }) {
+  const { avatarMap } = useAvatars()
+  const src = avatarMap[name] || cartoonAvatarUrl(name)
+  const style = { backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+
+  if (shape === 'diamond') {
+    return <div className="w-16 h-16 rounded-none ring-2 ring-white transform rotate-45 flex-shrink-0" style={style} />
+  }
+  if (shape === 'oval') {
+    return <div className="w-20 h-14 rounded-full ring-2 ring-white flex-shrink-0" style={style} />
+  }
+  return <div className="w-16 h-16 rounded-full ring-2 ring-white flex-shrink-0" style={style} />
+}
+
+export default function MembersPanel({ members, onChanged }) {
+  const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [removingName, setRemovingName] = useState(null)
 
   async function handleAdd(e) {
     e.preventDefault()
@@ -18,6 +39,7 @@ export default function MembersPanel({ members, onChanged, onClose }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setNewName('')
+      setAdding(false)
       await onChanged()
     } catch (err) {
       setError(err.message)
@@ -28,78 +50,100 @@ export default function MembersPanel({ members, onChanged, onClose }) {
 
   async function handleRemove(name) {
     if (!confirm(`Remove ${name} from the household?`)) return
-    try {
-      await fetch(`/api/members/${encodeURIComponent(name)}`, { method: 'DELETE' })
-      await onChanged()
-    } catch {
-      setError('Failed to remove member')
-    }
+    setRemovingName(name)
+    setTimeout(async () => {
+      try {
+        await fetch(`/api/members/${encodeURIComponent(name)}`, { method: 'DELETE' })
+        await onChanged()
+      } catch {
+        setError('Failed to remove member')
+      } finally {
+        setRemovingName(null)
+      }
+    }, 400)
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-black text-gray-900">Members</h2>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full clay-sm bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="clay bg-white/90 rounded-3xl overflow-hidden">
-        {members.length === 0 && (
-          <div className="px-6 py-10 text-center">
-            <p className="text-3xl mb-2">👥</p>
-            <p className="text-gray-400 text-sm font-medium">No members yet — add some below.</p>
+    <>
+      <main className="flex flex-col relative w-full max-w-lg mx-auto pt-32 pb-44 px-6">
+        <div className="flex flex-col gap-2 mb-12">
+          <div className="flex items-center gap-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-on-surface/65">Household Management</span>
+            <div className="flex-1 h-[0.5px] bg-on-surface/10" />
           </div>
-        )}
-        {members.map((name, i) => (
-          <div
-            key={name}
-            className={`flex items-center justify-between px-5 py-4 ${i < members.length - 1 ? 'border-b border-brand-50' : ''}`}
-          >
-            <div className="flex items-center gap-3.5">
-              <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 clay-sm flex items-center justify-center text-white text-sm font-black">
-                {name[0].toUpperCase()}
-              </span>
-              <span className="font-semibold text-gray-900">{name}</span>
-            </div>
-            <button
-              onClick={() => handleRemove(name)}
-              className="text-sm px-3 py-1.5 rounded-xl clay-sm bg-red-50 text-red-500 font-semibold hover:bg-red-100 transition"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={handleAdd} className="flex gap-3">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Member name (e.g. Alice)"
-          className="flex-1 clay-inset bg-white/80 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none placeholder:text-gray-400"
-        />
-        <button
-          type="submit"
-          disabled={loading || !newName.trim()}
-          className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-sm font-black clay-btn hover:bg-brand-700 disabled:opacity-50 transition"
-        >
-          {loading ? '…' : 'Add'}
-        </button>
-      </form>
-
-      {error && (
-        <div className="clay-inset bg-red-50 rounded-2xl px-4 py-3">
-          <p className="text-red-500 text-sm font-medium">{error}</p>
+          <h1 className="font-display-lg text-4xl text-on-surface shimmer-text">Household Members</h1>
         </div>
+
+        <div className="flex flex-col gap-10">
+          {members.map((name, i) => (
+            <div
+              key={name}
+              className="broken-grid-item glass-shard rounded-3xl p-8 flex flex-col gap-6 transition-all duration-500 hover:scale-[1.02]"
+              style={removingName === name ? { transform: 'translateY(40px) scale(0.9) rotate(5deg)', opacity: 0, filter: 'blur(10px)' } : undefined}
+            >
+              <div className="flex justify-between items-start">
+                <MemberAvatar name={name} shape={AVATAR_SHAPES[i % AVATAR_SHAPES.length]} />
+                <button
+                  onClick={() => handleRemove(name)}
+                  className="w-8 h-8 flex items-center justify-center glass-shard rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-display-lg text-2xl mb-1">{name}</span>
+                <span className="font-mono text-[11px] text-on-surface/65">Household member</span>
+              </div>
+            </div>
+          ))}
+
+          {members.length === 0 && (
+            <div className="border border-dashed border-on-surface/10 rounded-3xl p-12 flex flex-col items-center justify-center gap-6">
+              <div className="w-12 h-12 glass-shard rounded-full flex items-center justify-center opacity-30">
+                <span className="material-symbols-outlined text-2xl">person_add</span>
+              </div>
+              <p className="font-display-lg text-lg text-on-surface/55 text-center italic">
+                Expand your circle and share<br />the load with friends.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p className="font-mono text-xs text-red-500 mt-6 text-center">{error}</p>
+        )}
+      </main>
+
+      {adding ? (
+        <div className="fixed bottom-28 left-0 right-0 px-6 flex justify-center z-40">
+          <form onSubmit={handleAdd} className="glass-shard rounded-3xl px-6 py-4 flex items-center gap-3 w-full max-w-sm">
+            <input
+              type="text"
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Member name"
+              className="flex-1 bg-transparent focus:outline-none font-mono text-sm placeholder:text-on-surface/55"
+            />
+            <button
+              type="button"
+              onClick={() => { setAdding(false); setNewName('') }}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-on-surface/5 transition"
+            >
+              <span className="material-symbols-outlined text-[18px] text-on-surface/65">close</span>
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !newName.trim()}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-on-surface text-white disabled:opacity-40 transition"
+            >
+              <span className="material-symbols-outlined text-[18px]">{loading ? 'hourglass_empty' : 'check'}</span>
+            </button>
+          </form>
+        </div>
+      ) : (
+        <FloatingCTA icon="add" label="Add New Member" onClick={() => setAdding(true)} />
       )}
-    </div>
+    </>
   )
 }

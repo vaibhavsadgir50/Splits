@@ -37,6 +37,7 @@ export async function POST(request) {
       price: item.price,
       split_with: item.split_with,
       per_person_amt: perPerson,
+      category: item.category || null,
     })
     for (const person of item.split_with) {
       if (person !== paid_by) {

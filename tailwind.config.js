@@ -4,18 +4,11 @@ const config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-        },
+        'prism-start': '#ffffff',
+        'prism-border': 'rgba(255, 255, 255, 0.4)',
+        'glass-bg': 'rgba(255, 255, 255, 0.15)',
+        'on-surface': '#1a1a1a',
+        primary: '#6b38d4',
       },
       borderRadius: {
         '4xl': '2rem',
@@ -23,6 +16,9 @@ const config = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        'display-lg': ['Playfair Display', 'serif'],
+        'body-base': ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
     },
   },

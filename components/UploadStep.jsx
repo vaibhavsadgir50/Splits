@@ -39,6 +39,8 @@ async function compressImage(file, maxKB = 2000) {
 export default function UploadStep({ members, membersLoading, paidBy, onPaidByChange, onParsed, onManual, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [merchantName, setMerchantName] = useState('')
+  const [total, setTotal] = useState('')
   const cameraRef = useRef()
   const filesRef = useRef()
 
@@ -61,30 +63,33 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
     }
   }
 
+  const disabled = !paidBy || members.length === 0
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen flex flex-col px-6 pt-10 pb-32 max-w-lg mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-gray-900">New Receipt</h2>
+      <div className="flex items-start justify-between mb-10">
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-on-surface/65">New Entry</span>
+          <h1 className="font-display-lg text-3xl text-on-surface shimmer-text">New Receipt</h1>
+        </div>
         <button
           onClick={onClose}
           disabled={loading}
-          className="w-8 h-8 rounded-full clay-sm bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40 transition"
+          className="w-9 h-9 rounded-full glass-shard flex items-center justify-center text-on-surface/80 hover:text-on-surface disabled:opacity-40 transition"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <span className="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       {/* Who paid */}
-      <div>
-        <p className="text-sm font-bold text-gray-700 mb-3">Who paid?</p>
+      <div className="mb-8">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/75 mb-3">Who paid?</p>
         {membersLoading ? (
-          <p className="text-gray-400 text-sm">Loading…</p>
+          <p className="text-on-surface/65 text-sm">Loading…</p>
         ) : members.length === 0 ? (
-          <div className="clay-inset bg-amber-50 rounded-2xl px-4 py-3">
-            <p className="text-amber-700 text-sm font-medium">Add members first using the Members button.</p>
+          <div className="glass-shard rounded-3xl px-4 py-3">
+            <p className="text-on-surface/80 text-sm">Add members first from the Members tab.</p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -93,10 +98,10 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
                 key={name}
                 type="button"
                 onClick={() => onPaidByChange(name)}
-                className={`px-4 py-2 rounded-2xl text-sm font-bold transition ${
+                className={`px-4 py-2 rounded-full font-mono text-[11px] uppercase tracking-widest transition ${
                   paidBy === name
-                    ? 'bg-brand-600 text-white clay-btn'
-                    : 'bg-brand-50 text-brand-700 clay-sm hover:bg-brand-100'
+                    ? 'bg-on-surface text-white'
+                    : 'glass-shard text-on-surface/80 hover:text-on-surface'
                 }`}
               >
                 {name}
@@ -106,50 +111,95 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
         )}
       </div>
 
-      {/* Action buttons */}
+      {/* Capture area */}
       {loading ? (
-        <div className="clay-inset bg-brand-50 rounded-3xl flex flex-col items-center py-8 gap-3">
-          <div className="w-10 h-10 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-semibold text-brand-600">Gemini is reading the receipt…</p>
+        <div className="glass-shard rounded-3xl flex flex-col items-center py-12 gap-3 mb-8">
+          <div className="w-9 h-9 border-2 border-on-surface/20 border-t-on-surface rounded-full animate-spin" />
+          <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/75">Gemini is reading the receipt…</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => cameraRef.current?.click()}
-            disabled={!paidBy || members.length === 0}
-            className="clay bg-gradient-to-br from-brand-50 to-brand-100 rounded-3xl flex flex-col items-center gap-2 py-6 disabled:opacity-40 disabled:cursor-not-allowed transition hover:from-brand-100 hover:to-brand-200 active:scale-95"
-          >
-            <span className="text-4xl">📷</span>
-            <span className="text-sm font-bold text-brand-700">Take Photo</span>
-          </button>
-          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+        <div className="glass-shard rounded-3xl p-4 mb-8">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => cameraRef.current?.click()}
+              disabled={disabled}
+              className="rounded-3xl border border-on-surface/10 flex flex-col items-center gap-3 py-8 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-on-surface/[0.03] active:scale-95 transition"
+            >
+              <span className="w-14 h-14 glass-shard rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl text-on-surface/85">photo_camera</span>
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest">Take Photo</span>
+            </button>
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
 
-          <button
-            onClick={() => filesRef.current?.click()}
-            disabled={!paidBy || members.length === 0}
-            className="clay bg-gradient-to-br from-violet-50 to-purple-100 rounded-3xl flex flex-col items-center gap-2 py-6 disabled:opacity-40 disabled:cursor-not-allowed transition hover:from-violet-100 hover:to-purple-200 active:scale-95"
-          >
-            <span className="text-4xl">📁</span>
-            <span className="text-sm font-bold text-violet-700">From Files</span>
-          </button>
-          <input ref={filesRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
-
-          <button
-            onClick={onManual}
-            disabled={!paidBy || members.length === 0}
-            className="col-span-2 clay bg-gradient-to-r from-gray-50 to-gray-100 rounded-3xl flex items-center justify-center gap-3 py-4 disabled:opacity-40 disabled:cursor-not-allowed transition hover:from-gray-100 hover:to-gray-200 active:scale-95"
-          >
-            <span className="text-2xl">✏️</span>
-            <span className="text-sm font-bold text-gray-700">Enter Manually</span>
-          </button>
+            <button
+              onClick={() => filesRef.current?.click()}
+              disabled={disabled}
+              className="rounded-3xl border border-on-surface/10 flex flex-col items-center gap-3 py-8 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-on-surface/[0.03] active:scale-95 transition"
+            >
+              <span className="w-14 h-14 glass-shard rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl text-on-surface/85">image</span>
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest">From Files</span>
+            </button>
+            <input ref={filesRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+          </div>
         </div>
       )}
+
+      {/* Manual entry */}
+      <div className="glass-shard rounded-3xl p-6 mb-8">
+        <div className="flex items-center gap-2 mb-5">
+          <span className="material-symbols-outlined text-[18px] text-on-surface/75">edit_note</span>
+          <h3 className="font-display-lg text-lg text-on-surface">Manual Entry</h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="font-mono text-[9px] uppercase tracking-widest text-on-surface/65 mb-1 block">
+              Merchant Name
+            </label>
+            <input
+              type="text"
+              value={merchantName}
+              onChange={(e) => setMerchantName(e.target.value)}
+              placeholder="e.g. Blue Bottle Coffee"
+              className="w-full bg-transparent border-b border-on-surface/15 py-2 text-sm focus:outline-none focus:border-primary placeholder:text-on-surface/45 transition"
+            />
+          </div>
+          <div>
+            <label className="font-mono text-[9px] uppercase tracking-widest text-on-surface/65 mb-1 block">
+              Total
+            </label>
+            <div className="flex items-center border-b border-on-surface/15 py-2 focus-within:border-primary transition">
+              <span className="text-on-surface/65 mr-2 font-mono">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={total}
+                onChange={(e) => setTotal(e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-transparent focus:outline-none font-mono text-lg font-bold placeholder:text-on-surface/45"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {error && (
-        <div className="clay-inset bg-red-50 rounded-2xl px-4 py-3">
-          <p className="text-red-500 text-sm font-medium">{error}</p>
-        </div>
+        <p className="font-mono text-xs text-red-500 mb-8">{error}</p>
       )}
+
+      {/* Fixed primary CTA */}
+      <div className="fixed bottom-0 inset-x-0 px-6 pb-8 pt-4 max-w-lg mx-auto">
+        <button
+          onClick={() => onManual({ storeName: merchantName, total })}
+          disabled={disabled}
+          className="w-full h-14 rounded-full bg-on-surface text-white font-mono text-[11px] uppercase tracking-[0.2em] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-95"
+        >
+          Enter Manually
+        </button>
+      </div>
     </div>
   )
 }

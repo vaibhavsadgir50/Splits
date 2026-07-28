@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Avatar from './Avatar'
 
 export default function JoinModal({ members, googleName, onJoined }) {
   const [mode, setMode] = useState('pick')        // 'pick' | 'create'
@@ -31,25 +32,27 @@ export default function JoinModal({ members, googleName, onJoined }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-      <div className="clay bg-white/95 rounded-4xl w-full max-w-sm p-7 space-y-6">
+    <div className="fixed inset-0 bg-on-surface/20 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+      <div className="glass-shard rounded-3xl w-full max-w-sm p-8 space-y-6">
         <div className="text-center space-y-1">
-          <div className="text-4xl mb-2">🏠</div>
-          <h2 className="text-xl font-black text-gray-900">Who are you?</h2>
-          <p className="text-gray-500 text-sm">Link your Google account to your household name so we know where to send your receipts.</p>
+          <div className="w-14 h-14 mx-auto glass-shard rounded-full flex items-center justify-center mb-2">
+            <span className="material-symbols-outlined text-2xl text-on-surface/75">house</span>
+          </div>
+          <h2 className="font-display-lg text-2xl text-on-surface">Who are you?</h2>
+          <p className="text-on-surface/75 text-sm">Link your Google account to your household name so we know where to send your receipts.</p>
         </div>
 
         {/* Tab toggle */}
-        <div className="clay-inset bg-brand-50 rounded-2xl p-1 flex">
+        <div className="glass-shard rounded-full p-1 flex">
           <button
             onClick={() => setMode('pick')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${mode === 'pick' ? 'clay bg-white text-brand-700' : 'text-gray-500'}`}
+            className={`flex-1 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition ${mode === 'pick' ? 'bg-on-surface text-white' : 'text-on-surface/75'}`}
           >
-            I'm already a member
+            Already a member
           </button>
           <button
             onClick={() => setMode('create')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${mode === 'create' ? 'clay bg-white text-brand-700' : 'text-gray-500'}`}
+            className={`flex-1 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition ${mode === 'create' ? 'bg-on-surface text-white' : 'text-on-surface/75'}`}
           >
             Add me new
           </button>
@@ -58,21 +61,19 @@ export default function JoinModal({ members, googleName, onJoined }) {
         {mode === 'pick' ? (
           <div className="space-y-2">
             {members.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">No members yet — switch to "Add me new".</p>
+              <p className="text-on-surface/65 text-sm text-center py-4">No members yet — switch to "Add me new".</p>
             ) : (
               members.map((name) => (
                 <button
                   key={name}
                   onClick={() => setSelected(name)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm text-left transition ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-full font-semibold text-sm text-left transition ${
                     selected === name
-                      ? 'clay bg-brand-600 text-white'
-                      : 'clay-sm bg-brand-50 text-gray-800 hover:bg-brand-100'
+                      ? 'bg-on-surface text-white'
+                      : 'glass-shard text-on-surface hover:scale-[1.01]'
                   }`}
                 >
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm ${selected === name ? 'bg-white/20 text-white' : 'bg-brand-200 text-brand-700'}`}>
-                    {name[0].toUpperCase()}
-                  </span>
+                  <Avatar name={name} size="sm" />
                   {name}
                 </button>
               ))
@@ -84,20 +85,16 @@ export default function JoinModal({ members, googleName, onJoined }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Your name (e.g. Alex)"
-            className="w-full clay-inset bg-brand-50 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none placeholder:text-gray-400"
+            className="w-full glass-shard rounded-full px-4 py-3 text-sm font-semibold focus:outline-none placeholder:text-on-surface/55"
           />
         )}
 
-        {error && (
-          <div className="clay-inset bg-red-50 rounded-2xl px-4 py-2">
-            <p className="text-red-500 text-sm font-medium">{error}</p>
-          </div>
-        )}
+        {error && <p className="font-mono text-xs text-red-500">{error}</p>}
 
         <button
           onClick={handleJoin}
           disabled={loading || (mode === 'pick' && !selected) || (mode === 'create' && !newName.trim())}
-          className="w-full py-3.5 rounded-2xl bg-brand-600 text-white font-black clay-btn disabled:opacity-50 transition"
+          className="w-full py-3.5 rounded-full bg-on-surface text-white font-mono text-[11px] uppercase tracking-widest disabled:opacity-40 transition"
         >
           {loading ? 'Joining…' : 'Join Household'}
         </button>
