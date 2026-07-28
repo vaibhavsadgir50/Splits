@@ -81,4 +81,23 @@
 
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+
+  /* Document-scanner sweep — a glowing line sweeping top-to-bottom over the
+     uploaded receipt photo while Gemini is reading it */
+  .scan-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.9), rgba(255, 255, 255, 0.95), rgba(147, 197, 253, 0.9), transparent);
+    box-shadow: 0 0 12px 2px rgba(147, 197, 253, 0.8), 0 0 28px 8px rgba(147, 197, 253, 0.35);
+    animation: scan-sweep 2.2s ease-in-out infinite;
+  }
+
+  @keyframes scan-sweep {
+    0% { top: 0%; opacity: 0; }
+    8% { opacity: 1; }
+    92% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
 }

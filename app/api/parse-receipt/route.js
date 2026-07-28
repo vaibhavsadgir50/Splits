@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { parseReceiptImage } from '@/lib/gemini'
-import { resolveItemImageCached } from '@/lib/productImages'
 
 export const maxDuration = 60
 
@@ -46,15 +45,11 @@ export async function POST(request) {
     const { store, items } = await parseReceiptImage(base64, mimeType, ragContext)
     const receiptCode = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
 
-    // ── Resolve a real product photo per item (Open Food Facts → DuckDuckGo, cached) ─
-    const itemsWithImages = await Promise.all(
-      items.map(async (item) => {
-        const { image_url, source } = await resolveItemImageCached(supabase, item)
-        return { ...item, image_url, image_source: source }
-      })
-    )
-
-    return NextResponse.json({ items: itemsWithImages, store_name: store ?? '', receipt_id: receiptCode })
+    // Product photos are resolved lazily by the client (GET /api/item-image,
+    // one call per item, in parallel) instead of blocking this response —
+    // Open Food Facts/DuckDuckGo/Bing are free scraped/best-effort sources
+    // that can be slow, so this response only ever waits on Gemini.
+    return NextResponse.json({ items, store_name: store ?? '', receipt_id: receiptCode })
   } catch (err) {
     return NextResponse.json(
       { error: 'Receipt parsing failed: ' + err.message },

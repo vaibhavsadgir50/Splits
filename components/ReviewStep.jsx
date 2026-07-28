@@ -1,15 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AvatarStack from './AvatarStack'
 import Avatar from './Avatar'
 import ItemSplitModal from './ItemSplitModal'
 import { categoryIcon, categoryColor } from '@/lib/itemCategories'
 
-function ItemThumbnail({ item, onView }) {
+function ItemThumbnail({ item, onView, onImageResolved }) {
   const [errored, setErrored] = useState(false)
+  const [status, setStatus] = useState(item.image_url ? 'done' : 'loading') // 'loading' | 'done'
   const color = categoryColor(item.category)
   const hasImage = item.image_url && !errored
+
+  // Images are resolved lazily, client-side, one request per item, so a
+  // slow/flaky free image source never blocks the receipt from parsing —
+  // this thumbnail just fills in whenever its own lookup finishes.
+  useEffect(() => {
+    if (item.image_url || !item.name) { setStatus('done'); return }
+    let cancelled = false
+    const params = new URLSearchParams({ name: item.name, raw_name: item.raw_name || item.name })
+    fetch(`/api/item-image?${params}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.image_url) onImageResolved(d.image_url) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setStatus('done') })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.name])
+
+  const loadingImage = status === 'loading' && !hasImage
 
   return (
     <button
@@ -24,6 +43,8 @@ function ItemThumbnail({ item, onView }) {
           className="w-full h-full object-cover"
           onError={() => setErrored(true)}
         />
+      ) : loadingImage ? (
+        <span className="w-full h-full animate-pulse bg-on-surface/10" />
       ) : (
         <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${color}22` }}>
           <span className="material-symbols-outlined text-[18px]" style={{ color }}>
@@ -52,6 +73,12 @@ export default function ReviewStep({
   function updateItem(idx, field, value) {
     const next = [...items]
     next[idx] = { ...next[idx], [field]: field === 'price' ? parseFloat(value) || 0 : value }
+    onItemsChange(next)
+  }
+
+  function handleImageResolved(idx, url) {
+    const next = [...items]
+    next[idx] = { ...next[idx], image_url: url }
     onItemsChange(next)
   }
 
@@ -231,7 +258,7 @@ export default function ReviewStep({
           const isSwapSource = swapFromIdx === idx
           return (
             <div key={idx} className={`px-5 py-4 flex gap-4 transition-colors ${isSwapSource ? 'bg-primary/10' : ''}`}>
-              <ItemThumbnail item={item} onView={() => setLightboxItem(item)} />
+              <ItemThumbnail item={item} onView={() => setLightboxItem(item)} onImageResolved={(url) => handleImageResolved(idx, url)} />
 
               <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 async function compressImage(file, maxKB = 2000) {
   return new Promise((resolve) => {
@@ -41,14 +41,21 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
   const [error, setError] = useState('')
   const [merchantName, setMerchantName] = useState('')
   const [total, setTotal] = useState('')
+  const [previewUrl, setPreviewUrl] = useState(null)
   const cameraRef = useRef()
   const filesRef = useRef()
+
+  // Revoke the previous preview URL whenever it's replaced or the screen unmounts
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
+  }, [previewUrl])
 
   async function handleFile(file) {
     if (!file) return
     if (!paidBy) { setError('Select who paid first'); return }
     setError('')
     setLoading(true)
+    setPreviewUrl(URL.createObjectURL(file))
     try {
       const compressed = await compressImage(file)
       const form = new FormData()
@@ -58,6 +65,7 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       onParsed(data)
+      setLoading(false)
     } catch (err) {
       setError(err.message || 'Failed to read receipt. Please try again.')
       setLoading(false)
@@ -114,9 +122,22 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
 
       {/* Capture area */}
       {loading ? (
-        <div className="glass-shard rounded-3xl flex flex-col items-center py-12 gap-3 mb-8">
-          <div className="w-9 h-9 border-2 border-on-surface/20 border-t-on-surface rounded-full animate-spin" />
-          <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/75">Gemini is reading the receipt…</p>
+        <div className="glass-shard rounded-3xl overflow-hidden mb-8">
+          <div className="relative">
+            {previewUrl && (
+              <img src={previewUrl} alt="Receipt preview" className="w-full max-h-[380px] object-cover" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/25" />
+            <div className="scan-line" />
+            <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-white/80 rounded-tl-md" />
+            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-white/80 rounded-tr-md" />
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-white/80 rounded-bl-md" />
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-white/80 rounded-br-md" />
+          </div>
+          <div className="flex items-center justify-center gap-2 py-4">
+            <div className="w-4 h-4 border-2 border-on-surface/20 border-t-on-surface rounded-full animate-spin" />
+            <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/75">Gemini is reading the receipt…</p>
+          </div>
         </div>
       ) : (
         <div className="glass-shard rounded-3xl p-4 mb-8">
