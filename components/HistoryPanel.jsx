@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-export default function HistoryPanel() {
+export default function HistoryPanel({ ledgerId }) {
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -14,14 +14,14 @@ export default function HistoryPanel() {
 
   function loadHistory() {
     setLoading(true)
-    fetch('/api/history')
+    fetch(`/api/history?ledger_id=${encodeURIComponent(ledgerId)}`)
       .then((r) => r.json())
       .then(setReceipts)
       .catch(() => setError('Failed to load history.'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadHistory() }, [])
+  useEffect(() => { loadHistory() }, [ledgerId])
 
   async function handleSearch(e) {
     e.preventDefault()
@@ -31,7 +31,7 @@ export default function HistoryPanel() {
       const res = await fetch('/api/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ query: searchQuery, ledger_id: ledgerId }),
       })
       setSearchResults(await res.json())
     } catch {
@@ -45,7 +45,7 @@ export default function HistoryPanel() {
     if (!confirm(`Delete "${receipt.store_name || receipt.receipt_code}"? This cannot be undone.`)) return
     setDeletingId(receipt.id)
     try {
-      const res = await fetch(`/api/history?id=${receipt.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/history?id=${receipt.id}&ledger_id=${encodeURIComponent(ledgerId)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
       setReceipts((prev) => prev.filter((r) => r.id !== receipt.id))
       if (expandedId === receipt.id) setExpandedId(null)

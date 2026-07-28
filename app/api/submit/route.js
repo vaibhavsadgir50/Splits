@@ -9,16 +9,17 @@ export const maxDuration = 60
 export async function POST(request) {
   const supabase = getSupabase()
   const body = await request.json()
-  const { receipt_id, paid_by, items, notes = '', store_name = '' } = body
+  const { receipt_id, paid_by, items, notes = '', store_name = '', ledger_id } = body
 
   if (!receipt_id || !paid_by || !items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+  if (!ledger_id) return NextResponse.json({ error: 'ledger_id is required' }, { status: 400 })
 
   // 1. Insert receipt
   const { data: receipt, error: rErr } = await supabase
     .from('receipts')
-    .insert({ receipt_code: receipt_id, paid_by, notes, store_name })
+    .insert({ receipt_code: receipt_id, paid_by, notes, store_name, ledger_id })
     .select('id, created_at')
     .single()
 
@@ -38,6 +39,7 @@ export async function POST(request) {
       split_with: item.split_with,
       per_person_amt: perPerson,
       category: item.category || null,
+      ledger_id,
     })
     for (const person of item.split_with) {
       if (person !== paid_by) {
@@ -55,8 +57,8 @@ export async function POST(request) {
 
   // 3. Fire-and-forget: embeddings + emails
   const allMembers = [...new Set(items.flatMap((i) => i.split_with))]
-  generateAndStoreEmbeddings(supabase, insertedItems, receipt_id).catch(console.error)
-  sendPersonalizedEmails({ supabase, items, allMembers, paid_by, store_name, receipt_id, date: receipt.created_at }).catch(console.error)
+  generateAndStoreEmbeddings(supabase, insertedItems, receipt_id, ledger_id).catch(console.error)
+  sendPersonalizedEmails({ supabase, items, allMembers, paid_by, store_name, receipt_id, date: receipt.created_at, ledgerId: ledger_id }).catch(console.error)
 
   return NextResponse.json({
     message: 'Saved successfully',
@@ -68,11 +70,13 @@ export async function POST(request) {
   })
 }
 
-async function sendPersonalizedEmails({ supabase, items, allMembers, paid_by, store_name, receipt_id, date }) {
-  // Fetch emails for all members in this receipt
+async function sendPersonalizedEmails({ supabase, items, allMembers, paid_by, store_name, receipt_id, date, ledgerId }) {
+  // Fetch emails for all members in this receipt (scoped to this ledger —
+  // the same name can exist in a different ledger with a different email)
   const { data: memberRecords } = await supabase
     .from('members')
     .select('name, email')
+    .eq('ledger_id', ledgerId)
     .in('name', allMembers)
 
   if (!memberRecords?.length) return
@@ -123,7 +127,7 @@ async function sendPersonalizedEmails({ supabase, items, allMembers, paid_by, st
   }
 }
 
-async function generateAndStoreEmbeddings(supabase, items, receiptCode) {
+async function generateAndStoreEmbeddings(supabase, items, receiptCode, ledgerId) {
   const embedRows = []
   for (const item of items) {
     try {
@@ -134,6 +138,7 @@ async function generateAndStoreEmbeddings(supabase, items, receiptCode) {
         price: item.price,
         receipt_code: receiptCode,
         embedding: JSON.stringify(embedding),
+        ledger_id: ledgerId,
       })
     } catch {
       // Skip individual embedding failures silently

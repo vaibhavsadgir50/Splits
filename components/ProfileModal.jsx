@@ -24,13 +24,14 @@ function compressAvatarImage(file, maxDim = 256, quality = 0.85) {
   })
 }
 
-export default function ProfileModal({ memberName, onClose, onSignOut }) {
+export default function ProfileModal({ memberName, ledgerId, onClose, onSignOut }) {
   const { avatarMap, refreshAvatars } = useAvatars()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef()
 
   const hasCustomAvatar = Boolean(avatarMap[memberName])
+  const canEditPhoto = Boolean(ledgerId)
 
   async function handleFile(file) {
     if (!file) return
@@ -41,7 +42,7 @@ export default function ProfileModal({ memberName, onClose, onSignOut }) {
       const res = await fetch('/api/profile/avatar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl }),
+        body: JSON.stringify({ image: dataUrl, ledger_id: ledgerId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -57,7 +58,7 @@ export default function ProfileModal({ memberName, onClose, onSignOut }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/profile/avatar', { method: 'DELETE' })
+      const res = await fetch(`/api/profile/avatar?ledger_id=${encodeURIComponent(ledgerId)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
       refreshAvatars()
     } catch {
@@ -88,17 +89,21 @@ export default function ProfileModal({ memberName, onClose, onSignOut }) {
         <div className="flex flex-col gap-2">
           <button
             onClick={() => fileRef.current?.click()}
-            disabled={loading}
+            disabled={loading || !canEditPhoto}
             className="w-full py-3 rounded-full bg-on-surface text-white font-mono text-[11px] uppercase tracking-widest disabled:opacity-50 transition"
           >
             {loading ? 'Uploading…' : 'Upload Photo'}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
 
+          {!canEditPhoto && (
+            <p className="font-mono text-[9px] text-on-surface/45">Enter an account to change your photo there.</p>
+          )}
+
           {hasCustomAvatar && (
             <button
               onClick={handleRemove}
-              disabled={loading}
+              disabled={loading || !canEditPhoto}
               className="w-full py-3 rounded-full glass-shard font-mono text-[11px] uppercase tracking-widest text-red-500 disabled:opacity-50 transition"
             >
               Remove Photo

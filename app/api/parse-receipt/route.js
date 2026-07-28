@@ -9,19 +9,22 @@ export async function POST(request) {
   const supabase = getSupabase()
   const formData = await request.formData()
   const file = formData.get('file')
+  const ledgerId = formData.get('ledger_id')
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  if (!ledgerId) return NextResponse.json({ error: 'ledger_id is required' }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const base64 = buffer.toString('base64')
   const mimeType = file.type || 'image/jpeg'
 
-  // ── RAG context: recent unique items fed to Gemini as grounding ─────────
+  // ── RAG context: recent unique items from this ledger, fed to Gemini as grounding ─
   let ragContext = ''
   try {
     const { data: recentItems } = await supabase
       .from('items')
       .select('name, price')
+      .eq('ledger_id', ledgerId)
       .order('created_at', { ascending: false })
       .limit(60)
 

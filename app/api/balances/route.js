@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request) {
+  const ledgerId = new URL(request.url).searchParams.get('ledger_id')
+  if (!ledgerId) return NextResponse.json({ error: 'ledger_id is required' }, { status: 400 })
+
   const supabase = getSupabase()
 
   // Fetch receipts and settlements in parallel
   const [{ data: receipts, error: rErr }, { data: settlementsData, error: sErr }] =
     await Promise.all([
-      supabase.from('receipts').select('paid_by, items(split_with, per_person_amt)'),
-      supabase.from('settlements').select('paid_by, paid_to, amount'),
+      supabase.from('receipts').select('paid_by, items(split_with, per_person_amt)').eq('ledger_id', ledgerId),
+      supabase.from('settlements').select('paid_by, paid_to, amount').eq('ledger_id', ledgerId),
     ])
 
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 })

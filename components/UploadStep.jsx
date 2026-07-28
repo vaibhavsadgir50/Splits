@@ -36,7 +36,7 @@ async function compressImage(file, maxKB = 2000) {
   })
 }
 
-export default function UploadStep({ members, membersLoading, paidBy, onPaidByChange, onParsed, onManual, onClose }) {
+export default function UploadStep({ members, membersLoading, paidBy, onPaidByChange, onParsed, onManual, onClose, ledgerId }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [merchantName, setMerchantName] = useState('')
@@ -53,6 +53,7 @@ export default function UploadStep({ members, membersLoading, paidBy, onPaidByCh
       const compressed = await compressImage(file)
       const form = new FormData()
       form.append('file', compressed)
+      form.append('ledger_id', ledgerId)
       const res = await fetch('/api/parse-receipt', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)

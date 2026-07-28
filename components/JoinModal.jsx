@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Avatar from './Avatar'
 
-export default function JoinModal({ members, googleName, onJoined }) {
-  const [mode, setMode] = useState('pick')        // 'pick' | 'create'
+export default function JoinModal({ ledgerId, ledgerName, members, googleName, onJoined, onCancel }) {
+  const [mode, setMode] = useState(members.length > 0 ? 'pick' : 'create')
   const [selected, setSelected] = useState('')
   const [newName, setNewName] = useState(googleName || '')
   const [loading, setLoading] = useState(false)
@@ -16,14 +16,14 @@ export default function JoinModal({ members, googleName, onJoined }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth', {
+      const res = await fetch('/api/ledgers/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberName: name, createNew: mode === 'create' }),
+        body: JSON.stringify({ ledger_id: ledgerId, memberName: name, createNew: mode === 'create' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      onJoined(data.member)
+      onJoined(data)
     } catch (err) {
       setError(err.message || 'Failed to join. Try again.')
     } finally {
@@ -39,7 +39,9 @@ export default function JoinModal({ members, googleName, onJoined }) {
             <span className="material-symbols-outlined text-2xl text-on-surface/75">house</span>
           </div>
           <h2 className="font-display-lg text-2xl text-on-surface">Who are you?</h2>
-          <p className="text-on-surface/75 text-sm">Link your Google account to your household name so we know where to send your receipts.</p>
+          <p className="text-on-surface/75 text-sm">
+            Link your Google account to your name in {ledgerName ? <strong>{ledgerName}</strong> : 'this account'} so we know where to send your receipts.
+          </p>
         </div>
 
         {/* Tab toggle */}
@@ -96,8 +98,17 @@ export default function JoinModal({ members, googleName, onJoined }) {
           disabled={loading || (mode === 'pick' && !selected) || (mode === 'create' && !newName.trim())}
           className="w-full py-3.5 rounded-full bg-on-surface text-white font-mono text-[11px] uppercase tracking-widest disabled:opacity-40 transition"
         >
-          {loading ? 'Joining…' : 'Join Household'}
+          {loading ? 'Joining…' : 'Join Account'}
         </button>
+
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="w-full font-mono text-[10px] uppercase tracking-widest text-on-surface/50 hover:text-on-surface transition"
+          >
+            ← Back
+          </button>
+        )}
       </div>
     </div>
   )

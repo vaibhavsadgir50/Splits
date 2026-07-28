@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Avatar from './Avatar'
-import { categoryIcon, categoryColor } from '@/lib/itemCategories'
 
-export default function BalancesView({ members, refreshKey, memberName }) {
+export default function BalancesView({ ledgerId, ledgerName: ledgerNameProp, onLedgerRenamed, members, refreshKey }) {
   const [data, setData] = useState({ settlements: [], netBalances: {} })
   const [loading, setLoading] = useState(true)
   const [settling, setSettling] = useState(null)
@@ -16,57 +15,40 @@ export default function BalancesView({ members, refreshKey, memberName }) {
   const [memberItems, setMemberItems] = useState([])
   const [memberItemsLoading, setMemberItemsLoading] = useState(false)
 
-  const [accountName, setAccountName] = useState('Our Household')
+  const [ledgerName, setLedgerName] = useState(ledgerNameProp)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [nameSaving, setNameSaving] = useState(false)
   const [nameError, setNameError] = useState('')
 
-  const [stats, setStats] = useState({ today: 0, week: 0, year: 0, byCategory: [] })
-  const [statsLoading, setStatsLoading] = useState(true)
+  useEffect(() => { setLedgerName(ledgerNameProp) }, [ledgerNameProp])
 
   const fetchBalances = useCallback(() => {
     setLoading(true)
-    fetch('/api/balances')
+    fetch(`/api/balances?ledger_id=${encodeURIComponent(ledgerId)}`)
       .then((r) => r.json())
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [ledgerId])
 
   useEffect(() => { fetchBalances() }, [fetchBalances, refreshKey])
 
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json())
-      .then((d) => setAccountName(d.account_name || 'Our Household'))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (!memberName) { setStatsLoading(false); return }
-    setStatsLoading(true)
-    fetch(`/api/spending-stats?member=${encodeURIComponent(memberName)}`)
-      .then((r) => r.json())
-      .then((d) => setStats({ today: d.today ?? 0, week: d.week ?? 0, year: d.year ?? 0, byCategory: d.byCategory ?? [] }))
-      .catch(() => {})
-      .finally(() => setStatsLoading(false))
-  }, [memberName, refreshKey])
-
   async function handleSaveName() {
     const trimmed = nameInput.trim()
-    if (!trimmed || trimmed === accountName) { setEditingName(false); return }
+    if (!trimmed || trimmed === ledgerName) { setEditingName(false); return }
     setNameSaving(true)
     setNameError('')
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
+      const res = await fetch(`/api/ledgers/${ledgerId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account_name: trimmed }),
+        body: JSON.stringify({ ledger_name: trimmed }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      setAccountName(json.account_name)
+      setLedgerName(json.ledger_name)
+      onLedgerRenamed?.(json.ledger_name)
     } catch (err) {
       setNameError(err.message || 'Failed to save name')
       setTimeout(() => setNameError(''), 4000)
@@ -76,13 +58,11 @@ export default function BalancesView({ members, refreshKey, memberName }) {
     }
   }
 
-  const maxCategoryTotal = Math.max(1, ...stats.byCategory.map((c) => c.total))
-
   function openMemberDetail(name) {
     setMemberDetail(name)
     setMemberItems([])
     setMemberItemsLoading(true)
-    fetch(`/api/member-items?member=${encodeURIComponent(name)}`)
+    fetch(`/api/member-items?member=${encodeURIComponent(name)}&ledger_id=${encodeURIComponent(ledgerId)}`)
       .then((r) => r.json())
       .then((d) => setMemberItems(Array.isArray(d) ? d : []))
       .catch(() => {})
@@ -106,7 +86,7 @@ export default function BalancesView({ members, refreshKey, memberName }) {
       const res = await fetch('/api/settle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paid_by: settling.from, paid_to: settling.to, amount, note: settleNote }),
+        body: JSON.stringify({ paid_by: settling.from, paid_to: settling.to, amount, note: settleNote, ledger_id: ledgerId }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -140,10 +120,10 @@ export default function BalancesView({ members, refreshKey, memberName }) {
             />
           ) : (
             <button
-              onClick={() => { setNameInput(accountName); setEditingName(true) }}
+              onClick={() => { setNameInput(ledgerName); setEditingName(true) }}
               className="self-start flex items-center gap-1.5 group"
             >
-              <span className="font-display-lg text-xl italic text-primary">{accountName}</span>
+              <span className="font-display-lg text-xl italic text-primary">{ledgerName}</span>
               <span className="material-symbols-outlined text-[14px] text-on-surface/25 group-hover:text-on-surface/60 transition">edit</span>
             </button>
           )}
@@ -154,51 +134,6 @@ export default function BalancesView({ members, refreshKey, memberName }) {
 
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-on-surface/55">Accounts</span>
         </div>
-
-        {/* Personal spending stats */}
-        {memberName && !statsLoading && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            {[
-              { label: 'Today', value: stats.today },
-              { label: 'This Week', value: stats.week },
-              { label: 'This Year', value: stats.year },
-            ].map((s) => (
-              <div key={s.label} className="glass-shard rounded-3xl px-2 py-4 flex flex-col items-center gap-1.5">
-                <span className="font-mono text-[8px] uppercase tracking-widest text-on-surface/55 text-center">{s.label}</span>
-                <span className="font-mono text-base font-black text-on-surface">${s.value.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Category breakdown */}
-        {memberName && !statsLoading && stats.byCategory.length > 0 && (
-          <div className="glass-shard rounded-3xl px-5 py-4 flex flex-col gap-3 mb-8">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface/55">Where you're spending</p>
-            <div className="flex flex-col gap-3">
-              {stats.byCategory.map((c) => {
-                const color = categoryColor(c.category)
-                const pct = Math.max(6, (c.total / maxCategoryTotal) * 100)
-                return (
-                  <div key={c.category} className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}22` }}>
-                      <span className="material-symbols-outlined text-[14px]" style={{ color }}>{categoryIcon(c.category)}</span>
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-semibold text-on-surface capitalize">{c.category.replace(/_/g, ' ')}</span>
-                        <span className="font-mono font-bold text-on-surface">${c.total.toFixed(2)}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-on-surface/10 overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {loading && (
           <div className="text-center py-12">

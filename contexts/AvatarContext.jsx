@@ -4,15 +4,16 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 const AvatarContext = createContext({ avatarMap: {}, refreshAvatars: () => {} })
 
-export function AvatarProvider({ children }) {
+export function AvatarProvider({ ledgerId, children }) {
   const [avatarMap, setAvatarMap] = useState({})
 
   const refreshAvatars = useCallback(() => {
-    fetch('/api/avatars')
+    if (!ledgerId) { setAvatarMap({}); return }
+    fetch(`/api/avatars?ledger_id=${encodeURIComponent(ledgerId)}`)
       .then((r) => r.json())
       .then(setAvatarMap)
       .catch(() => {})
-  }, [])
+  }, [ledgerId])
 
   useEffect(() => { refreshAvatars() }, [refreshAvatars])
 

@@ -40,6 +40,7 @@ export default function ReviewStep({
   items, onItemsChange,
   assignments, onAssignmentsChange,
   onSubmitted, onBack, onDiscard,
+  ledgerId,
 }) {
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
@@ -119,6 +120,7 @@ export default function ReviewStep({
       paid_by: paidBy,
       store_name: storeName,
       notes,
+      ledger_id: ledgerId,
       items: items
         .map((item, idx) => ({
           name: item.name,

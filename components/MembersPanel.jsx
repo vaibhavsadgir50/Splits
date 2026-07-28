@@ -21,7 +21,7 @@ function MemberAvatar({ name, shape }) {
   return <div className="w-16 h-16 rounded-full ring-2 ring-white flex-shrink-0" style={style} />
 }
 
-export default function MembersPanel({ members, onChanged }) {
+export default function MembersPanel({ members, onChanged, ledgerId }) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,7 +35,7 @@ export default function MembersPanel({ members, onChanged }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/members?name=${encodeURIComponent(name)}`, { method: 'POST' })
+      const res = await fetch(`/api/members?name=${encodeURIComponent(name)}&ledger_id=${encodeURIComponent(ledgerId)}`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setNewName('')
@@ -53,7 +53,7 @@ export default function MembersPanel({ members, onChanged }) {
     setRemovingName(name)
     setTimeout(async () => {
       try {
-        await fetch(`/api/members/${encodeURIComponent(name)}`, { method: 'DELETE' })
+        await fetch(`/api/members/${encodeURIComponent(name)}?ledger_id=${encodeURIComponent(ledgerId)}`, { method: 'DELETE' })
         await onChanged()
       } catch {
         setError('Failed to remove member')
