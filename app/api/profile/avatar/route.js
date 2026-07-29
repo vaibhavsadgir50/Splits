@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { getAuthedUser } from '@/lib/serverAuth'
+import { MEMOJI_FILES } from '@/lib/avatars'
 
 async function getAuthedMemberName(ledgerId) {
   const user = await getAuthedUser()
@@ -22,10 +23,12 @@ export async function POST(request) {
   const memberName = await getAuthedMemberName(ledger_id)
   if (!memberName) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  if (!image || typeof image !== 'string' || !image.startsWith('data:image/')) {
+  const isUploadedPhoto = typeof image === 'string' && image.startsWith('data:image/')
+  const isMemojiPick = typeof image === 'string' && MEMOJI_FILES.includes(image.replace(/^\/memoji\//, ''))
+  if (!isUploadedPhoto && !isMemojiPick) {
     return NextResponse.json({ error: 'Invalid image' }, { status: 400 })
   }
-  if (image.length > 400_000) {
+  if (isUploadedPhoto && image.length > 400_000) {
     return NextResponse.json({ error: 'Image too large' }, { status: 400 })
   }
 

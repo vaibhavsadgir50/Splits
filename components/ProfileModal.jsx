@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import Avatar from './Avatar'
 import { useAvatars } from '@/contexts/AvatarContext'
+import { MEMOJI_FILES } from '@/lib/avatars'
 
 function compressAvatarImage(file, maxDim = 256, quality = 0.85) {
   return new Promise((resolve, reject) => {
@@ -68,6 +69,25 @@ export default function ProfileModal({ memberName, ledgerId, onClose, onSignOut 
     }
   }
 
+  async function handlePickMemoji(file) {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: `/memoji/${file}`, ledger_id: ledgerId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      refreshAvatars()
+    } catch (err) {
+      setError(err.message || 'Failed to set avatar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 bg-on-surface/20 backdrop-blur-sm flex items-center justify-center z-[70] p-6"
@@ -110,6 +130,24 @@ export default function ProfileModal({ memberName, ledgerId, onClose, onSignOut 
             </button>
           )}
         </div>
+
+        {canEditPhoto && (
+          <div className="text-left">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface/55 mb-3">Or pick a Memoji</p>
+            <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto pr-1">
+              {MEMOJI_FILES.map((file) => (
+                <button
+                  key={file}
+                  onClick={() => handlePickMemoji(file)}
+                  disabled={loading}
+                  className="aspect-square rounded-full overflow-hidden ring-1 ring-on-surface/10 hover:ring-2 hover:ring-primary active:scale-90 disabled:opacity-50 transition"
+                >
+                  <img src={`/memoji/${file}`} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && <p className="font-mono text-xs text-red-500">{error}</p>}
 
