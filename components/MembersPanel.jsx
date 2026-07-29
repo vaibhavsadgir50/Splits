@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import FloatingCTA from './FloatingCTA'
 import { cartoonAvatarUrl } from '@/lib/avatars'
 import { useAvatars } from '@/contexts/AvatarContext'
@@ -29,6 +29,23 @@ export default function MembersPanel() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [removingName, setRemovingName] = useState(null)
+  const [inviteCode, setInviteCode] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/ledgers/${ledgerId}`)
+      .then((r) => r.json())
+      .then((d) => setInviteCode(d.invite_code ?? null))
+      .catch(() => {})
+  }, [ledgerId])
+
+  function handleCopyCode() {
+    if (!inviteCode) return
+    navigator.clipboard.writeText(inviteCode).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   async function handleAdd(e) {
     e.preventDefault()
@@ -74,6 +91,25 @@ export default function MembersPanel() {
             <div className="flex-1 h-[0.5px] bg-on-surface/10" />
           </div>
           <h1 className="font-display-lg text-4xl text-on-surface shimmer-text">Household Members</h1>
+        </div>
+
+        {/* Invite code — the only way anyone else joins this account */}
+        <div className="glass-shard rounded-3xl px-6 py-5 flex items-center justify-between gap-4 mb-10">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface/55">Invite Code</span>
+            <span className="font-mono text-2xl font-black tracking-[0.15em] text-on-surface">
+              {inviteCode ?? '……'}
+            </span>
+            <span className="text-on-surface/65 text-xs mt-0.5">Share this so someone can join with "Join With Code"</span>
+          </div>
+          <button
+            onClick={handleCopyCode}
+            disabled={!inviteCode}
+            className="flex-shrink-0 w-11 h-11 rounded-full glass-shard flex items-center justify-center text-on-surface/75 hover:text-on-surface disabled:opacity-40 transition"
+            title="Copy invite code"
+          >
+            <span className="material-symbols-outlined text-[18px]">{copied ? 'check' : 'content_copy'}</span>
+          </button>
         </div>
 
         <div className="flex flex-col gap-10">
