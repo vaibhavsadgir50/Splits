@@ -6,17 +6,31 @@ import Avatar from './Avatar'
 import ItemSplitModal from './ItemSplitModal'
 import { categoryIcon, categoryColor } from '@/lib/itemCategories'
 
+// Standard non-veg indicator (brown/maroon square outline, solid dot inside)
+// — shown instead of an actual photo for meat/seafood items, same convention
+// as the mark printed on Indian packaged food.
+function NonVegSymbol() {
+  return (
+    <span className="w-6 h-6 border-2 border-red-800 flex items-center justify-center flex-shrink-0" title="Non-vegetarian">
+      <span className="w-2.5 h-2.5 rounded-full bg-red-800" />
+    </span>
+  )
+}
+
 function ItemThumbnail({ item, onView, onImageResolved }) {
   const [errored, setErrored] = useState(false)
-  const [status, setStatus] = useState(item.image_url ? 'done' : 'loading') // 'loading' | 'done'
+  const isMeat = item.category === 'meat_seafood'
+  const [status, setStatus] = useState(item.image_url || isMeat ? 'done' : 'loading') // 'loading' | 'done'
   const color = categoryColor(item.category)
-  const hasImage = item.image_url && !errored
+  const hasImage = item.image_url && !errored && !isMeat
 
   // Images are resolved lazily, client-side, one request per item, so a
   // slow/flaky free image source never blocks the receipt from parsing —
   // this thumbnail just fills in whenever its own lookup finishes.
+  // Meat/seafood items never fetch or show a photo — the non-veg symbol
+  // is shown instead, always, by design.
   useEffect(() => {
-    if (item.image_url || !item.name) { setStatus('done'); return }
+    if (isMeat || item.image_url || !item.name) { setStatus('done'); return }
     let cancelled = false
     const params = new URLSearchParams({ name: item.name, raw_name: item.raw_name || item.name })
     fetch(`/api/item-image?${params}`)
@@ -26,7 +40,7 @@ function ItemThumbnail({ item, onView, onImageResolved }) {
       .finally(() => { if (!cancelled) setStatus('done') })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.name])
+  }, [item.name, isMeat])
 
   const loadingImage = status === 'loading' && !hasImage
 
@@ -36,7 +50,9 @@ function ItemThumbnail({ item, onView, onImageResolved }) {
       onClick={hasImage ? onView : undefined}
       className={`w-20 h-16 rounded-2xl overflow-hidden flex-shrink-0 ring-1 ring-on-surface/10 bg-white flex items-center justify-center ${hasImage ? 'active:scale-95 transition' : 'cursor-default'}`}
     >
-      {hasImage ? (
+      {isMeat ? (
+        <NonVegSymbol />
+      ) : hasImage ? (
         <img
           src={item.image_url}
           alt={item.name}
