@@ -77,9 +77,17 @@ export default function ReviewStep({
   }
 
   function handleImageResolved(idx, url) {
-    const next = [...items]
-    next[idx] = { ...next[idx], image_url: url }
-    onItemsChange(next)
+    // Every item's image resolves concurrently (one fetch per thumbnail,
+    // fired in parallel on mount) — building `next` from the `items`
+    // closure here would race: whichever resolves last overwrites the
+    // whole array from a stale snapshot, wiping out every image that
+    // resolved in between. The functional update form always applies
+    // against the true latest state instead.
+    onItemsChange((prevItems) => {
+      const next = [...prevItems]
+      next[idx] = { ...next[idx], image_url: url }
+      return next
+    })
   }
 
   function addItem() {
